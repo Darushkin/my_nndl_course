@@ -1,0 +1,1480 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Titanic Survival Predictor</title>
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.10.0/dist/tf.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs-vis@1.5.1/dist/tfjs-vis.umd.min.js"></script>
+    <style>
+        :root {
+            --primary-color: #2c3e50;
+            --secondary-color: #3498db;
+            --accent-color: #e74c3c;
+            --light-color: #ecf0f1;
+            --dark-color: #34495e;
+            --success-color: #2ecc71;
+            --warning-color: #f39c12;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            background-color: #f5f7fa;
+            margin: 0;
+            padding: 0;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        
+        header {
+            background-color: var(--primary-color);
+            color: white;
+            padding: 20px 0;
+            text-align: center;
+            margin-bottom: 30px;
+            border-radius: 5px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+        
+        h1, h2, h3 {
+            margin-top: 0;
+        }
+        
+        h1 {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+        }
+        
+        h2 {
+            color: var(--primary-color);
+            border-bottom: 2px solid var(--secondary-color);
+            padding-bottom: 10px;
+            margin-bottom: 20px;
+        }
+        
+        .section {
+            background-color: white;
+            border-radius: 5px;
+            padding: 20px;
+            margin-bottom: 30px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+        
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+        
+        .card {
+            background-color: var(--light-color);
+            border-radius: 5px;
+            padding: 15px;
+            box-shadow: 0 2px 3px rgba(0,0,0,0.1);
+        }
+        
+        .btn {
+            display: inline-block;
+            background-color: var(--secondary-color);
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 1rem;
+            transition: background-color 0.3s;
+            margin-right: 10px;
+            margin-bottom: 10px;
+        }
+        
+        .btn:hover {
+            background-color: #2980b9;
+        }
+        
+        .btn-danger {
+            background-color: var(--accent-color);
+        }
+        
+        .btn-danger:hover {
+            background-color: #c0392b;
+        }
+        
+        .btn-success {
+            background-color: var(--success-color);
+        }
+        
+        .btn-success:hover {
+            background-color: #27ae60;
+        }
+        
+        .file-input {
+            margin-bottom: 15px;
+        }
+        
+        .status {
+            padding: 10px;
+            border-radius: 4px;
+            margin-bottom: 15px;
+        }
+        
+        .status-info {
+            background-color: #d1ecf1;
+            color: #0c5460;
+        }
+        
+        .status-success {
+            background-color: #d4edda;
+            color: #155724;
+        }
+        
+        .status-warning {
+            background-color: #fff3cd;
+            color: #856404;
+        }
+        
+        .status-error {
+            background-color: #f8d7da;
+            color: #721c24;
+        }
+        
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 20px;
+        }
+        
+        th, td {
+            padding: 8px 12px;
+            text-align: left;
+            border-bottom: 1px solid #ddd;
+        }
+        
+        th {
+            background-color: var(--light-color);
+        }
+        
+        .progress-bar {
+            height: 20px;
+            background-color: #e0e0e0;
+            border-radius: 10px;
+            overflow: hidden;
+            margin-bottom: 10px;
+        }
+        
+        .progress {
+            height: 100%;
+            background-color: var(--secondary-color);
+            width: 0%;
+            transition: width 0.3s;
+        }
+        
+        .chart-container {
+            height: 300px;
+            margin-bottom: 20px;
+        }
+        
+        .control-group {
+            margin-bottom: 15px;
+        }
+        
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+        
+        input[type="number"], input[type="range"], select {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            box-sizing: border-box;
+        }
+        
+        .threshold-control {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .threshold-value {
+            min-width: 50px;
+            text-align: center;
+            font-weight: bold;
+        }
+        
+        footer {
+            text-align: center;
+            margin-top: 30px;
+            padding: 20px;
+            color: #7f8c8d;
+            font-size: 0.9rem;
+        }
+        
+        .hidden {
+            display: none;
+        }
+        
+        @media (max-width: 768px) {
+            .grid {
+                grid-template-columns: 1fr;
+            }
+            
+            h1 {
+                font-size: 2rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Titanic Survival Predictor</h1>
+            <p>Train a neural network to predict passenger survival using TensorFlow.js</p>
+        </header>
+        
+        <!-- Data Load Section -->
+        <section id="data-load" class="section">
+            <h2>1. Data Load</h2>
+            <div class="grid">
+                <div class="card">
+                    <h3>Training Data</h3>
+                    <div class="file-input">
+                        <label for="train-file">Upload train.csv</label>
+                        <input type="file" id="train-file" accept=".csv">
+                    </div>
+                    <div id="train-status" class="status status-info">No file selected</div>
+                </div>
+                
+                <div class="card">
+                    <h3>Test Data</h3>
+                    <div class="file-input">
+                        <label for="test-file">Upload test.csv</label>
+                        <input type="file" id="test-file" accept=".csv">
+                    </div>
+                    <div id="test-status" class="status status-info">No file selected</div>
+                </div>
+            </div>
+            
+            <button id="load-data-btn" class="btn">Load Data</button>
+            <button id="use-sample-data-btn" class="btn btn-success">Use Sample Data</button>
+            
+            <div id="data-preview" class="hidden">
+                <h3>Data Preview</h3>
+                <div id="data-stats"></div>
+                <div id="survival-rates" class="chart-container"></div>
+            </div>
+        </section>
+        
+        <!-- Preprocess Section -->
+        <section id="preprocess" class="section hidden">
+            <h2>2. Preprocess Data</h2>
+            <div class="control-group">
+                <label for="feature-select">Select Features:</label>
+                <div id="feature-select">
+                    <!-- Feature checkboxes will be populated here -->
+                </div>
+            </div>
+            
+            <div class="grid">
+                <div class="card">
+                    <h3>Preprocessing Steps</h3>
+                    <ul>
+                        <li>Impute missing Age with median</li>
+                        <li>Impute missing Embarked with mode</li>
+                        <li>Standardize Age and Fare</li>
+                        <li>One-hot encode categorical variables</li>
+                        <li>Add FamilySize and IsAlone features</li>
+                    </ul>
+                </div>
+                
+                <div class="card">
+                    <h3>Feature Summary</h3>
+                    <div id="feature-summary"></div>
+                </div>
+            </div>
+            
+            <button id="preprocess-btn" class="btn">Preprocess Data</button>
+            <div id="preprocess-status" class="status"></div>
+        </section>
+        
+        <!-- Model Section -->
+        <section id="model" class="section hidden">
+            <h2>3. Model Definition</h2>
+            <div class="grid">
+                <div class="card">
+                    <h3>Architecture</h3>
+                    <p>Sequential model with:</p>
+                    <ul>
+                        <li>Input layer: Based on selected features</li>
+                        <li>Hidden layer: Dense(16, 'relu')</li>
+                        <li>Output layer: Dense(1, 'sigmoid')</li>
+                    </ul>
+                </div>
+                
+                <div class="card">
+                    <h3>Compilation</h3>
+                    <ul>
+                        <li>Optimizer: Adam</li>
+                        <li>Loss: Binary Crossentropy</li>
+                        <li>Metrics: Accuracy</li>
+                    </ul>
+                </div>
+            </div>
+            
+            <button id="create-model-btn" class="btn">Create Model</button>
+            <div id="model-summary"></div>
+        </section>
+        
+        <!-- Training Section -->
+        <section id="training" class="section hidden">
+            <h2>4. Training</h2>
+            <div class="grid">
+                <div class="card">
+                    <h3>Training Parameters</h3>
+                    <div class="control-group">
+                        <label for="epochs">Epochs:</label>
+                        <input type="number" id="epochs" value="50" min="1" max="200">
+                    </div>
+                    <div class="control-group">
+                        <label for="batch-size">Batch Size:</label>
+                        <input type="number" id="batch-size" value="32" min="1" max="128">
+                    </div>
+                    <div class="control-group">
+                        <label for="validation-split">Validation Split:</label>
+                        <input type="number" id="validation-split" value="0.2" min="0.1" max="0.5" step="0.05">
+                    </div>
+                </div>
+                
+                <div class="card">
+                    <h3>Training Progress</h3>
+                    <div id="training-progress" class="progress-bar">
+                        <div class="progress" id="training-progress-bar"></div>
+                    </div>
+                    <div id="training-status">Ready to train</div>
+                </div>
+            </div>
+            
+            <button id="train-btn" class="btn">Start Training</button>
+            <button id="stop-training-btn" class="btn btn-danger hidden">Stop Training</button>
+            
+            <div id="training-charts" class="chart-container"></div>
+        </section>
+        
+        <!-- Metrics Section -->
+        <section id="metrics" class="section hidden">
+            <h2>5. Model Metrics</h2>
+            <div class="grid">
+                <div class="card">
+                    <h3>Confusion Matrix</h3>
+                    <div id="confusion-matrix" class="chart-container"></div>
+                </div>
+                
+                <div class="card">
+                    <h3>ROC Curve</h3>
+                    <div id="roc-curve" class="chart-container"></div>
+                </div>
+            </div>
+            
+            <div class="control-group">
+                <label for="threshold">Prediction Threshold:</label>
+                <div class="threshold-control">
+                    <input type="range" id="threshold" min="0" max="1" step="0.01" value="0.5">
+                    <span id="threshold-value" class="threshold-value">0.5</span>
+                </div>
+            </div>
+            
+            <button id="evaluate-btn" class="btn">Evaluate Model</button>
+            <div id="evaluation-results"></div>
+        </section>
+        
+        <!-- Prediction Section -->
+        <section id="prediction" class="section hidden">
+            <h2>6. Prediction</h2>
+            <div class="grid">
+                <div class="card">
+                    <h3>Test Data Predictions</h3>
+                    <p>Generate survival predictions for the test dataset</p>
+                    <button id="predict-btn" class="btn">Generate Predictions</button>
+                </div>
+                
+                <div class="card">
+                    <h3>Single Prediction</h3>
+                    <div class="control-group">
+                        <label for="pclass">Pclass:</label>
+                        <select id="pclass">
+                            <option value="1">1st Class</option>
+                            <option value="2">2nd Class</option>
+                            <option value="3">3rd Class</option>
+                        </select>
+                    </div>
+                    <div class="control-group">
+                        <label for="sex">Sex:</label>
+                        <select id="sex">
+                            <option value="male">Male</option>
+                            <option value="female">Female</option>
+                        </select>
+                    </div>
+                    <div class="control-group">
+                        <label for="age">Age:</label>
+                        <input type="number" id="age" value="30" min="0" max="100">
+                    </div>
+                    <div class="control-group">
+                        <label for="sibsp">Siblings/Spouses:</label>
+                        <input type="number" id="sibsp" value="0" min="0" max="10">
+                    </div>
+                    <div class="control-group">
+                        <label for="parch">Parents/Children:</label>
+                        <input type="number" id="parch" value="0" min="0" max="10">
+                    </div>
+                    <div class="control-group">
+                        <label for="fare">Fare:</label>
+                        <input type="number" id="fare" value="50" min="0" step="0.01">
+                    </div>
+                    <div class="control-group">
+                        <label for="embarked">Embarked:</label>
+                        <select id="embarked">
+                            <option value="S">Southampton</option>
+                            <option value="C">Cherbourg</option>
+                            <option value="Q">Queenstown</option>
+                        </select>
+                    </div>
+                    <button id="single-predict-btn" class="btn">Predict Survival</button>
+                    <div id="single-prediction-result"></div>
+                </div>
+            </div>
+            
+            <div id="prediction-results"></div>
+        </section>
+        
+        <!-- Export Section -->
+        <section id="export" class="section hidden">
+            <h2>7. Export Results</h2>
+            <p>Download the predictions as a CSV file for submission</p>
+            <button id="export-btn" class="btn btn-success">Export Predictions as CSV</button>
+            <div id="export-status"></div>
+        </section>
+        
+        <footer>
+            <p>Titanic Survival Predictor - Built with TensorFlow.js</p>
+        </footer>
+    </div>
+
+    <script>
+        // Global variables
+        let trainData = null;
+        let testData = null;
+        let processedTrainData = null;
+        let processedTestData = null;
+        let model = null;
+        let trainingInProgress = false;
+        let featureNames = [];
+        let featureStats = {};
+        let predictions = null;
+        
+        // DOM elements
+        const trainFileInput = document.getElementById('train-file');
+        const testFileInput = document.getElementById('test-file');
+        const loadDataBtn = document.getElementById('load-data-btn');
+        const useSampleDataBtn = document.getElementById('use-sample-data-btn');
+        const dataPreview = document.getElementById('data-preview');
+        const dataStats = document.getElementById('data-stats');
+        const survivalRates = document.getElementById('survival-rates');
+        const preprocessSection = document.getElementById('preprocess');
+        const featureSelect = document.getElementById('feature-select');
+        const featureSummary = document.getElementById('feature-summary');
+        const preprocessBtn = document.getElementById('preprocess-btn');
+        const preprocessStatus = document.getElementById('preprocess-status');
+        const modelSection = document.getElementById('model');
+        const createModelBtn = document.getElementById('create-model-btn');
+        const modelSummary = document.getElementById('model-summary');
+        const trainingSection = document.getElementById('training');
+        const trainBtn = document.getElementById('train-btn');
+        const stopTrainingBtn = document.getElementById('stop-training-btn');
+        const trainingProgressBar = document.getElementById('training-progress-bar');
+        const trainingStatus = document.getElementById('training-status');
+        const trainingCharts = document.getElementById('training-charts');
+        const metricsSection = document.getElementById('metrics');
+        const thresholdSlider = document.getElementById('threshold');
+        const thresholdValue = document.getElementById('threshold-value');
+        const evaluateBtn = document.getElementById('evaluate-btn');
+        const evaluationResults = document.getElementById('evaluation-results');
+        const confusionMatrix = document.getElementById('confusion-matrix');
+        const rocCurve = document.getElementById('roc-curve');
+        const predictionSection = document.getElementById('prediction');
+        const predictBtn = document.getElementById('predict-btn');
+        const singlePredictBtn = document.getElementById('single-predict-btn');
+        const singlePredictionResult = document.getElementById('single-prediction-result');
+        const predictionResults = document.getElementById('prediction-results');
+        const exportSection = document.getElementById('export');
+        const exportBtn = document.getElementById('export-btn');
+        const exportStatus = document.getElementById('export-status');
+        
+        // Event listeners
+        document.addEventListener('DOMContentLoaded', initApp);
+        
+        function initApp() {
+            // Set up event listeners
+            loadDataBtn.addEventListener('click', loadDataFiles);
+            useSampleDataBtn.addEventListener('click', useSampleData);
+            preprocessBtn.addEventListener('click', preprocessData);
+            createModelBtn.addEventListener('click', createModel);
+            trainBtn.addEventListener('click', startTraining);
+            stopTrainingBtn.addEventListener('click', stopTraining);
+            evaluateBtn.addEventListener('click', evaluateModel);
+            predictBtn.addEventListener('click', generatePredictions);
+            singlePredictBtn.addEventListener('click', predictSingle);
+            exportBtn.addEventListener('click', exportPredictions);
+            
+            // Update threshold value display
+            thresholdSlider.addEventListener('input', function() {
+                thresholdValue.textContent = this.value;
+            });
+            
+            // Initialize feature selection
+            initializeFeatureSelection();
+        }
+        
+        // Initialize feature selection checkboxes
+        function initializeFeatureSelection() {
+            const features = [
+                { id: 'pclass', name: 'Pclass', checked: true },
+                { id: 'sex', name: 'Sex', checked: true },
+                { id: 'age', name: 'Age', checked: true },
+                { id: 'sibsp', name: 'SibSp', checked: true },
+                { id: 'parch', name: 'Parch', checked: true },
+                { id: 'fare', name: 'Fare', checked: true },
+                { id: 'embarked', name: 'Embarked', checked: true },
+                { id: 'family_size', name: 'Family Size', checked: true },
+                { id: 'is_alone', name: 'Is Alone', checked: true }
+            ];
+            
+            features.forEach(feature => {
+                const div = document.createElement('div');
+                div.innerHTML = `
+                    <input type="checkbox" id="feature-${feature.id}" ${feature.checked ? 'checked' : ''}>
+                    <label for="feature-${feature.id}">${feature.name}</label>
+                `;
+                featureSelect.appendChild(div);
+            });
+        }
+        
+        // Get selected features
+        function getSelectedFeatures() {
+            const selected = [];
+            document.querySelectorAll('#feature-select input:checked').forEach(checkbox => {
+                selected.push(checkbox.id.replace('feature-', ''));
+            });
+            return selected;
+        }
+        
+        // Load data from uploaded files
+        async function loadDataFiles() {
+            const trainFile = trainFileInput.files[0];
+            const testFile = testFileInput.files[0];
+            
+            if (!trainFile) {
+                alert('Please select a training data file (train.csv)');
+                return;
+            }
+            
+            try {
+                showStatus('train-status', 'Loading training data...', 'info');
+                trainData = await parseCSV(await readFile(trainFile));
+                showStatus('train-status', `Training data loaded: ${trainData.length} rows`, 'success');
+                
+                if (testFile) {
+                    showStatus('test-status', 'Loading test data...', 'info');
+                    testData = await parseCSV(await readFile(testFile));
+                    showStatus('test-status', `Test data loaded: ${testData.length} rows`, 'success');
+                } else {
+                    showStatus('test-status', 'No test file selected', 'warning');
+                }
+                
+                analyzeData();
+                preprocessSection.classList.remove('hidden');
+            } catch (error) {
+                console.error('Error loading data:', error);
+                showStatus('train-status', 'Error loading data: ' + error.message, 'error');
+            }
+        }
+        
+        // Use sample data (embedded in the HTML)
+        function useSampleData() {
+            // Parse the sample data embedded in the HTML
+            const trainCSV = document.querySelector('[file-name="train (2).csv"]').getAttribute('file-content');
+            const testCSV = document.querySelector('[file-name="test (3).csv"]').getAttribute('file-content');
+            
+            try {
+                showStatus('train-status', 'Loading sample training data...', 'info');
+                trainData = parseCSV(trainCSV);
+                showStatus('train-status', `Training data loaded: ${trainData.length} rows`, 'success');
+                
+                showStatus('test-status', 'Loading sample test data...', 'info');
+                testData = parseCSV(testCSV);
+                showStatus('test-status', `Test data loaded: ${testData.length} rows`, 'success');
+                
+                analyzeData();
+                preprocessSection.classList.remove('hidden');
+            } catch (error) {
+                console.error('Error loading sample data:', error);
+                showStatus('train-status', 'Error loading sample data: ' + error.message, 'error');
+            }
+        }
+        
+        // Read file as text
+        function readFile(file) {
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onload = () => resolve(reader.result);
+                reader.onerror = () => reject(reader.error);
+                reader.readAsText(file);
+            });
+        }
+        
+        // Parse CSV data with proper handling of quoted fields
+        function parseCSV(csvText) {
+            const lines = csvText.trim().split('\n');
+            const headers = parseCSVLine(lines[0]);
+            
+            const data = [];
+            for (let i = 1; i < lines.length; i++) {
+                const values = parseCSVLine(lines[i]);
+                if (values.length === headers.length) {
+                    const row = {};
+                    headers.forEach((header, index) => {
+                        // Convert numeric values
+                        const value = values[index].trim();
+                        row[header] = isNaN(value) || value === '' ? value : Number(value);
+                    });
+                    data.push(row);
+                }
+            }
+            
+            return data;
+        }
+        
+        // Parse a single CSV line, handling quoted fields with commas
+        function parseCSVLine(line) {
+            const result = [];
+            let inQuotes = false;
+            let currentField = '';
+            
+            for (let i = 0; i < line.length; i++) {
+                const char = line[i];
+                
+                if (char === '"') {
+                    inQuotes = !inQuotes;
+                } else if (char === ',' && !inQuotes) {
+                    result.push(currentField);
+                    currentField = '';
+                } else {
+                    currentField += char;
+                }
+            }
+            
+            // Add the last field
+            result.push(currentField);
+            
+            return result;
+        }
+        
+        // Analyze the loaded data
+        function analyzeData() {
+            dataPreview.classList.remove('hidden');
+            
+            // Calculate basic statistics
+            const stats = {
+                trainRows: trainData.length,
+                testRows: testData ? testData.length : 0,
+                features: Object.keys(trainData[0]).length - 1, // Exclude target
+                survivalRate: (trainData.filter(row => row.Survived === 1).length / trainData.length * 100).toFixed(2)
+            };
+            
+            dataStats.innerHTML = `
+                <table>
+                    <tr><th>Dataset</th><th>Rows</th><th>Features</th></tr>
+                    <tr><td>Training</td><td>${stats.trainRows}</td><td>${stats.features}</td></tr>
+                    ${testData ? `<tr><td>Test</td><td>${stats.testRows}</td><td>${stats.features}</td></tr>` : ''}
+                    <tr><td colspan="3">Survival Rate: ${stats.survivalRate}%</td></tr>
+                </table>
+            `;
+            
+            // Calculate survival rates by sex and class
+            const survivalBySex = {};
+            const survivalByClass = {};
+            
+            trainData.forEach(row => {
+                // By sex
+                if (!survivalBySex[row.Sex]) {
+                    survivalBySex[row.Sex] = { total: 0, survived: 0 };
+                }
+                survivalBySex[row.Sex].total++;
+                if (row.Survived === 1) survivalBySex[row.Sex].survived++;
+                
+                // By class
+                if (!survivalByClass[row.Pclass]) {
+                    survivalByClass[row.Pclass] = { total: 0, survived: 0 };
+                }
+                survivalByClass[row.Pclass].total++;
+                if (row.Survived === 1) survivalByClass[row.Pclass].survived++;
+            });
+            
+            // Prepare data for visualization
+            const sexData = {
+                values: Object.keys(survivalBySex).map(sex => ({
+                    x: sex,
+                    y: (survivalBySex[sex].survived / survivalBySex[sex].total * 100).toFixed(1)
+                }))
+            };
+            
+            const classData = {
+                values: Object.keys(survivalByClass).map(pclass => ({
+                    x: `Class ${pclass}`,
+                    y: (survivalByClass[pclass].survived / survivalByClass[pclass].total * 100).toFixed(1)
+                }))
+            };
+            
+            // Create survival rate charts
+            tfvis.render.barchart(
+                { name: 'Survival Rate by Sex', tab: 'Data Exploration' },
+                sexData,
+                {
+                    xLabel: 'Sex',
+                    yLabel: 'Survival Rate (%)',
+                    height: 300
+                }
+            );
+            
+            tfvis.render.barchart(
+                { name: 'Survival Rate by Class', tab: 'Data Exploration' },
+                classData,
+                {
+                    xLabel: 'Class',
+                    yLabel: 'Survival Rate (%)',
+                    height: 300
+                }
+            );
+        }
+        
+        // Preprocess the data
+        function preprocessData() {
+            try {
+                showStatus(preprocessStatus, 'Preprocessing data...', 'info');
+                
+                const selectedFeatures = getSelectedFeatures();
+                if (selectedFeatures.length === 0) {
+                    showStatus(preprocessStatus, 'Please select at least one feature', 'error');
+                    return;
+                }
+                
+                // Calculate feature statistics from training data
+                calculateFeatureStats(trainData);
+                
+                // Preprocess training data
+                processedTrainData = preprocessDataset(trainData, selectedFeatures, true);
+                
+                // Preprocess test data if available
+                if (testData) {
+                    processedTestData = preprocessDataset(testData, selectedFeatures, false);
+                }
+                
+                // Update feature summary
+                updateFeatureSummary(selectedFeatures);
+                
+                showStatus(preprocessStatus, 'Data preprocessing completed', 'success');
+                modelSection.classList.remove('hidden');
+            } catch (error) {
+                console.error('Error preprocessing data:', error);
+                showStatus(preprocessStatus, 'Error preprocessing data: ' + error.message, 'error');
+            }
+        }
+        
+        // Calculate statistics for features
+        function calculateFeatureStats(data) {
+            featureStats = {
+                age: { median: 0 },
+                fare: { median: 0, mean: 0, std: 0 },
+                embarked: { mode: 'S' },
+                pclass: { values: [1, 2, 3] },
+                sex: { values: ['male', 'female'] }
+            };
+            
+            // Calculate age median
+            const ages = data.map(row => row.Age).filter(age => !isNaN(age) && age !== '');
+            featureStats.age.median = ages.length > 0 ? 
+                ages.sort((a, b) => a - b)[Math.floor(ages.length / 2)] : 30;
+            
+            // Calculate fare statistics
+            const fares = data.map(row => row.Fare).filter(fare => !isNaN(fare) && fare !== '');
+            if (fares.length > 0) {
+                featureStats.fare.median = fares.sort((a, b) => a - b)[Math.floor(fares.length / 2)];
+                featureStats.fare.mean = fares.reduce((sum, fare) => sum + fare, 0) / fares.length;
+                featureStats.fare.std = Math.sqrt(
+                    fares.reduce((sum, fare) => sum + Math.pow(fare - featureStats.fare.mean, 2), 0) / fares.length
+                );
+            }
+            
+            // Calculate embarked mode
+            const embarkedCounts = {};
+            data.forEach(row => {
+                if (row.Embarked && row.Embarked !== '') {
+                    embarkedCounts[row.Embarked] = (embarkedCounts[row.Embarked] || 0) + 1;
+                }
+            });
+            featureStats.embarked.mode = Object.keys(embarkedCounts).reduce((a, b) => 
+                embarkedCounts[a] > embarkedCounts[b] ? a : b, 'S');
+        }
+        
+        // Preprocess a dataset
+        function preprocessDataset(data, selectedFeatures, isTraining) {
+            const processed = {
+                features: [],
+                labels: isTraining ? [] : null,
+                passengerIds: []
+            };
+            
+            featureNames = [];
+            
+            data.forEach(row => {
+                const featureVector = [];
+                
+                // Add selected features to the feature vector
+                selectedFeatures.forEach(feature => {
+                    switch (feature) {
+                        case 'pclass':
+                            // One-hot encode Pclass
+                            if (row.Pclass === 1) featureVector.push(1, 0, 0);
+                            else if (row.Pclass === 2) featureVector.push(0, 1, 0);
+                            else featureVector.push(0, 0, 1);
+                            if (isTraining && featureNames.length < selectedFeatures.length * 3) {
+                                featureNames.push('Pclass_1', 'Pclass_2', 'Pclass_3');
+                            }
+                            break;
+                            
+                        case 'sex':
+                            // One-hot encode Sex
+                            if (row.Sex === 'female') featureVector.push(1, 0);
+                            else featureVector.push(0, 1);
+                            if (isTraining && featureNames.length < selectedFeatures.length * 3) {
+                                featureNames.push('Sex_female', 'Sex_male');
+                            }
+                            break;
+                            
+                        case 'age':
+                            // Impute missing Age with median and standardize
+                            let age = row.Age;
+                            if (isNaN(age) age = featureStats.age.median;
+                            featureVector.push((age - featureStats.age.median) / 30); // Rough standardization
+                            if (isTraining && featureNames.length < selectedFeatures.length * 3) {
+                                featureNames.push('Age');
+                            }
+                            break;
+                            
+                        case 'sibsp':
+                            featureVector.push(row.SibSp);
+                            if (isTraining && featureNames.length < selectedFeatures.length * 3) {
+                                featureNames.push('SibSp');
+                            }
+                            break;
+                            
+                        case 'parch':
+                            featureVector.push(row.Parch);
+                            if (isTraining && featureNames.length < selectedFeatures.length * 3) {
+                                featureNames.push('Parch');
+                            }
+                            break;
+                            
+                        case 'fare':
+                            // Impute missing Fare with median and standardize
+                            let fare = row.Fare;
+                            if (isNaN(fare) fare = featureStats.fare.median;
+                            featureVector.push((fare - featureStats.fare.mean) / featureStats.fare.std);
+                            if (isTraining && featureNames.length < selectedFeatures.length * 3) {
+                                featureNames.push('Fare');
+                            }
+                            break;
+                            
+                        case 'embarked':
+                            // One-hot encode Embarked
+                            const embarked = row.Embarked || featureStats.embarked.mode;
+                            if (embarked === 'C') featureVector.push(1, 0, 0);
+                            else if (embarked === 'Q') featureVector.push(0, 1, 0);
+                            else featureVector.push(0, 0, 1);
+                            if (isTraining && featureNames.length < selectedFeatures.length * 3) {
+                                featureNames.push('Embarked_C', 'Embarked_Q', 'Embarked_S');
+                            }
+                            break;
+                            
+                        case 'family_size':
+                            const familySize = (row.SibSp || 0) + (row.Parch || 0) + 1;
+                            featureVector.push(familySize);
+                            if (isTraining && featureNames.length < selectedFeatures.length * 3) {
+                                featureNames.push('FamilySize');
+                            }
+                            break;
+                            
+                        case 'is_alone':
+                            const isAlone = ((row.SibSp || 0) + (row.Parch || 0)) === 0 ? 1 : 0;
+                            featureVector.push(isAlone);
+                            if (isTraining && featureNames.length < selectedFeatures.length * 3) {
+                                featureNames.push('IsAlone');
+                            }
+                            break;
+                    }
+                });
+                
+                processed.features.push(featureVector);
+                if (isTraining) {
+                    processed.labels.push(row.Survived);
+                }
+                processed.passengerIds.push(row.PassengerId);
+            });
+            
+            return processed;
+        }
+        
+        // Update feature summary display
+        function updateFeatureSummary(selectedFeatures) {
+            featureSummary.innerHTML = `
+                <p><strong>Selected Features:</strong> ${selectedFeatures.join(', ')}</p>
+                <p><strong>Feature Vector Size:</strong> ${featureNames.length}</p>
+                <p><strong>Training Samples:</strong> ${processedTrainData.features.length}</p>
+                ${processedTestData ? `<p><strong>Test Samples:</strong> ${processedTestData.features.length}</p>` : ''}
+            `;
+        }
+        
+        // Create the neural network model
+        function createModel() {
+            try {
+                const inputSize = featureNames.length;
+                
+                model = tf.sequential({
+                    layers: [
+                        tf.layers.dense({
+                            inputShape: [inputSize],
+                            units: 16,
+                            activation: 'relu'
+                        }),
+                        tf.layers.dense({
+                            units: 1,
+                            activation: 'sigmoid'
+                        })
+                    ]
+                });
+                
+                model.compile({
+                    optimizer: 'adam',
+                    loss: 'binaryCrossentropy',
+                    metrics: ['accuracy']
+                });
+                
+                // Display model summary
+                modelSummary.innerHTML = `
+                    <h3>Model Summary</h3>
+                    <pre>${getModelSummary(model)}</pre>
+                `;
+                
+                trainingSection.classList.remove('hidden');
+            } catch (error) {
+                console.error('Error creating model:', error);
+                modelSummary.innerHTML = `<p class="status-error">Error creating model: ${error.message}</p>`;
+            }
+        }
+        
+        // Get model summary as text
+        function getModelSummary(model) {
+            let summary = '';
+            model.summary(1, 1, (line) => {
+                summary += line + '\n';
+            });
+            return summary;
+        }
+        
+        // Start model training
+        async function startTraining() {
+            if (!model) {
+                alert('Please create a model first');
+                return;
+            }
+            
+            if (!processedTrainData) {
+                alert('Please preprocess the data first');
+                return;
+            }
+            
+            try {
+                trainingInProgress = true;
+                trainBtn.classList.add('hidden');
+                stopTrainingBtn.classList.remove('hidden');
+                
+                const epochs = parseInt(document.getElementById('epochs').value);
+                const batchSize = parseInt(document.getElementById('batch-size').value);
+                const validationSplit = parseFloat(document.getElementById('validation-split').value);
+                
+                // Convert data to tensors
+                const xs = tf.tensor2d(processedTrainData.features);
+                const ys = tf.tensor1d(processedTrainData.labels);
+                
+                // Train the model
+                const history = await model.fit(xs, ys, {
+                    epochs: epochs,
+                    batchSize: batchSize,
+                    validationSplit: validationSplit,
+                    callbacks: {
+                        onEpochEnd: (epoch, logs) => {
+                            // Update progress bar
+                            const progress = ((epoch + 1) / epochs) * 100;
+                            trainingProgressBar.style.width = `${progress}%`;
+                            
+                            // Update status
+                            trainingStatus.textContent = 
+                                `Epoch ${epoch + 1}/${epochs} - Loss: ${logs.loss.toFixed(4)}, Accuracy: ${logs.acc.toFixed(4)}`;
+                            
+                            // Update training charts
+                            updateTrainingCharts(history);
+                        },
+                        onTrainEnd: () => {
+                            trainingInProgress = false;
+                            trainBtn.classList.remove('hidden');
+                            stopTrainingBtn.classList.add('hidden');
+                            trainingStatus.textContent = 'Training completed';
+                            
+                            // Show metrics section
+                            metricsSection.classList.remove('hidden');
+                        }
+                    }
+                });
+                
+                // Clean up tensors
+                xs.dispose();
+                ys.dispose();
+            } catch (error) {
+                console.error('Error during training:', error);
+                trainingStatus.textContent = `Error during training: ${error.message}`;
+                trainingInProgress = false;
+                trainBtn.classList.remove('hidden');
+                stopTrainingBtn.classList.add('hidden');
+            }
+        }
+        
+        // Stop training
+        function stopTraining() {
+            trainingInProgress = false;
+            trainBtn.classList.remove('hidden');
+            stopTrainingBtn.classList.add('hidden');
+            trainingStatus.textContent = 'Training stopped by user';
+        }
+        
+        // Update training charts
+        function updateTrainingCharts(history) {
+            const lossValues = history.history.loss.map((loss, epoch) => ({ x: epoch, y: loss }));
+            const accValues = history.history.acc.map((acc, epoch) => ({ x: epoch, y: acc }));
+            const valLossValues = history.history.val_loss ? 
+                history.history.val_loss.map((loss, epoch) => ({ x: epoch, y: loss })) : null;
+            const valAccValues = history.history.val_acc ? 
+                history.history.val_acc.map((acc, epoch) => ({ x: epoch, y: acc })) : null;
+            
+            // Render loss chart
+            tfvis.render.linechart(
+                { name: 'Model Loss', tab: 'Training' },
+                { 
+                    values: lossValues, 
+                    series: ['Training Loss'],
+                    ...(valLossValues && { values: valLossValues, series: ['Validation Loss'] })
+                },
+                {
+                    xLabel: 'Epoch',
+                    yLabel: 'Loss',
+                    height: 300
+                }
+            );
+            
+            // Render accuracy chart
+            tfvis.render.linechart(
+                { name: 'Model Accuracy', tab: 'Training' },
+                { 
+                    values: accValues, 
+                    series: ['Training Accuracy'],
+                    ...(valAccValues && { values: valAccValues, series: ['Validation Accuracy'] })
+                },
+                {
+                    xLabel: 'Epoch',
+                    yLabel: 'Accuracy',
+                    height: 300
+                }
+            );
+        }
+        
+        // Evaluate the model
+        async function evaluateModel() {
+            if (!model) {
+                alert('Please create and train a model first');
+                return;
+            }
+            
+            try {
+                showStatus(evaluationResults, 'Evaluating model...', 'info');
+                
+                // Convert data to tensors
+                const xs = tf.tensor2d(processedTrainData.features);
+                const ys = tf.tensor1d(processedTrainData.labels);
+                
+                // Get predictions
+                const predictions = model.predict(xs);
+                const predValues = await predictions.data();
+                
+                // Calculate metrics
+                const threshold = parseFloat(thresholdSlider.value);
+                const binaryPreds = predValues.map(p => p >= threshold ? 1 : 0);
+                
+                // Calculate confusion matrix
+                const cm = calculateConfusionMatrix(processedTrainData.labels, binaryPreds);
+                
+                // Calculate ROC curve
+                const rocData = calculateROCCurve(processedTrainData.labels, predValues);
+                
+                // Calculate evaluation metrics
+                const accuracy = (cm.truePos + cm.trueNeg) / (cm.truePos + cm.trueNeg + cm.falsePos + cm.falseNeg);
+                const precision = cm.truePos / (cm.truePos + cm.falsePos);
+                const recall = cm.truePos / (cm.truePos + cm.falseNeg);
+                const f1 = 2 * (precision * recall) / (precision + recall);
+                
+                // Display evaluation results
+                evaluationResults.innerHTML = `
+                    <h3>Evaluation Metrics</h3>
+                    <table>
+                        <tr><th>Metric</th><th>Value</th></tr>
+                        <tr><td>Accuracy</td><td>${(accuracy * 100).toFixed(2)}%</td></tr>
+                        <tr><td>Precision</td><td>${precision.toFixed(4)}</td></tr>
+                        <tr><td>Recall</td><td>${recall.toFixed(4)}</td></tr>
+                        <tr><td>F1 Score</td><td>${f1.toFixed(4)}</td></tr>
+                    </table>
+                `;
+                
+                // Render confusion matrix
+                tfvis.render.confusionMatrix(
+                    { name: 'Confusion Matrix', tab: 'Evaluation' },
+                    {
+                        values: [
+                            [cm.trueNeg, cm.falsePos],
+                            [cm.falseNeg, cm.truePos]
+                        ],
+                        labels: ['Did Not Survive', 'Survived']
+                    },
+                    {
+                        height: 300
+                    }
+                );
+                
+                // Render ROC curve
+                tfvis.render.linechart(
+                    { name: 'ROC Curve', tab: 'Evaluation' },
+                    { values: rocData, series: ['ROC'] },
+                    {
+                        xLabel: 'False Positive Rate',
+                        yLabel: 'True Positive Rate',
+                        height: 300
+                    }
+                );
+                
+                // Calculate and display AUC
+                const auc = calculateAUC(rocData);
+                evaluationResults.innerHTML += `<p><strong>AUC:</strong> ${auc.toFixed(4)}</p>`;
+                
+                // Clean up tensors
+                xs.dispose();
+                ys.dispose();
+                predictions.dispose();
+                
+                // Show prediction section
+                predictionSection.classList.remove('hidden');
+                exportSection.classList.remove('hidden');
+            } catch (error) {
+                console.error('Error during evaluation:', error);
+                showStatus(evaluationResults, `Error during evaluation: ${error.message}`, 'error');
+            }
+        }
+        
+        // Calculate confusion matrix
+        function calculateConfusionMatrix(trueLabels, predLabels) {
+            let truePos = 0, trueNeg = 0, falsePos = 0, falseNeg = 0;
+            
+            for (let i = 0; i < trueLabels.length; i++) {
+                if (trueLabels[i] === 1 && predLabels[i] === 1) truePos++;
+                else if (trueLabels[i] === 0 && predLabels[i] === 0) trueNeg++;
+                else if (trueLabels[i] === 0 && predLabels[i] === 1) falsePos++;
+                else if (trueLabels[i] === 1 && predLabels[i] === 0) falseNeg++;
+            }
+            
+            return { truePos, trueNeg, falsePos, falseNeg };
+        }
+        
+        // Calculate ROC curve
+        function calculateROCCurve(trueLabels, predScores) {
+            // Create thresholds from 0 to 1
+            const thresholds = Array.from({ length: 101 }, (_, i) => i / 100);
+            const rocPoints = [];
+            
+            thresholds.forEach(threshold => {
+                const binaryPreds = predScores.map(p => p >= threshold ? 1 : 0);
+                const cm = calculateConfusionMatrix(trueLabels, binaryPreds);
+                
+                const tpr = cm.truePos / (cm.truePos + cm.falseNeg);
+                const fpr = cm.falsePos / (cm.falsePos + cm.trueNeg);
+                
+                rocPoints.push({ x: fpr, y: tpr });
+            });
+            
+            return rocPoints;
+        }
+        
+        // Calculate AUC using trapezoidal rule
+        function calculateAUC(rocPoints) {
+            let auc = 0;
+            for (let i = 1; i < rocPoints.length; i++) {
+                const width = rocPoints[i].x - rocPoints[i-1].x;
+                const height = (rocPoints[i].y + rocPoints[i-1].y) / 2;
+                auc += width * height;
+            }
+            return auc;
+        }
+        
+        // Generate predictions for test data
+        async function generatePredictions() {
+            if (!model) {
+                alert('Please create and train a model first');
+                return;
+            }
+            
+            if (!processedTestData) {
+                alert('No test data available');
+                return;
+            }
+            
+            try {
+                showStatus(predictionResults, 'Generating predictions...', 'info');
+                
+                // Convert test data to tensor
+                const xs = tf.tensor2d(processedTestData.features);
+                
+                // Get predictions
+                const predictions = model.predict(xs);
+                const predValues = await predictions.data();
+                
+                // Apply threshold
+                const threshold = parseFloat(thresholdSlider.value);
+                const binaryPreds = predValues.map(p => p >= threshold ? 1 : 0);
+                
+                // Store predictions for export
+                window.predictions = binaryPreds.map((pred, i) => ({
+                    PassengerId: processedTestData.passengerIds[i],
+                    Survived: pred
+                }));
+                
+                // Display first few predictions
+                let previewHtml = '<h3>Prediction Preview (First 10)</h3><table><tr><th>PassengerId</th><th>Survived</th></tr>';
+                for (let i = 0; i < Math.min(10, window.predictions.length); i++) {
+                    previewHtml += `<tr><td>${window.predictions[i].PassengerId}</td><td>${window.predictions[i].Survived}</td></tr>`;
+                }
+                previewHtml += '</table>';
+                previewHtml += `<p>Total predictions: ${window.predictions.length}</p>`;
+                
+                predictionResults.innerHTML = previewHtml;
+                
+                // Clean up tensors
+                xs.dispose();
+                predictions.dispose();
+            } catch (error) {
+                console.error('Error during prediction:', error);
+                showStatus(predictionResults, `Error during prediction: ${error.message}`, 'error');
+            }
+        }
+        
+        // Predict survival for a single passenger
+        async function predictSingle() {
+            if (!model) {
+                alert('Please create and train a model first');
+                return;
+            }
+            
+            try {
+                // Get input values
+                const pclass = parseInt(document.getElementById('pclass').value);
+                const sex = document.getElementById('sex').value;
+                const age = parseFloat(document.getElementById('age').value);
+                const sibsp = parseInt(document.getElementById('sibsp').value);
+                const parch = parseInt(document.getElementById('parch').value);
+                const fare = parseFloat(document.getElementById('fare').value);
+                const embarked = document.getElementById('embarked').value;
+                
+                // Create feature vector
+                const featureVector = [];
+                const selectedFeatures = getSelectedFeatures();
+                
+                selectedFeatures.forEach(feature => {
+                    switch (feature) {
+                        case 'pclass':
+                            if (pclass === 1) featureVector.push(1, 0, 0);
+                            else if (pclass === 2) featureVector.push(0, 1, 0);
+                            else featureVector.push(0, 0, 1);
+                            break;
+                            
+                        case 'sex':
+                            if (sex === 'female') featureVector.push(1, 0);
+                            else featureVector.push(0, 1);
+                            break;
+                            
+                        case 'age':
+                            featureVector.push((age - featureStats.age.median) / 30);
+                            break;
+                            
+                        case 'sibsp':
+                            featureVector.push(sibsp);
+                            break;
+                            
+                        case 'parch':
+                            featureVector.push(parch);
+                            break;
+                            
+                        case 'fare':
+                            featureVector.push((fare - featureStats.fare.mean) / featureStats.fare.std);
+                            break;
+                            
+                        case 'embarked':
+                            if (embarked === 'C') featureVector.push(1, 0, 0);
+                            else if (embarked === 'Q') featureVector.push(0, 1, 0);
+                            else featureVector.push(0, 0, 1);
+                            break;
+                            
+                        case 'family_size':
+                            const familySize = sibsp + parch + 1;
+                            featureVector.push(familySize);
+                            break;
+                            
+                        case 'is_alone':
+                            const isAlone = (sibsp + parch) === 0 ? 1 : 0;
+                            featureVector.push(isAlone);
+                            break;
+                    }
+                });
+                
+                // Convert to tensor and predict
+                const xs = tf.tensor2d([featureVector]);
+                const prediction = model.predict(xs);
+                const predValue = (await prediction.data())[0];
+                
+                // Apply threshold
+                const threshold = parseFloat(thresholdSlider.value);
+                const survived = predValue >= threshold ? 1 : 0;
+                
+                // Display result
+                singlePredictionResult.innerHTML = `
+                    <div class="status ${survived ? 'status-success' : 'status-warning'}">
+                        <strong>Prediction:</strong> ${survived ? 'Survived' : 'Did Not Survive'} 
+                        (Probability: ${(predValue * 100).toFixed(2)}%)
+                    </div>
+                `;
+                
+                // Clean up tensors
+                xs.dispose();
+                prediction.dispose();
+            } catch (error) {
+                console.error('Error during single prediction:', error);
+                singlePredictionResult.innerHTML = `<div class="status status-error">Error: ${error.message}</div>`;
+            }
+        }
+        
+        // Export predictions as CSV
+        function exportPredictions() {
+            if (!window.predictions) {
+                alert('No predictions to export. Please generate predictions first.');
+                return;
+            }
+            
+            try {
+                // Create CSV content
+                let csvContent = 'PassengerId,Survived\n';
+                window.predictions.forEach(pred => {
+                    csvContent += `${pred.PassengerId},${pred.Survived}\n`;
+                });
+                
+                // Create download link
+                const blob = new Blob([csvContent], { type: 'text/csv' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = 'submission.csv';
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+                
+                showStatus(exportStatus, 'Predictions exported successfully as submission.csv', 'success');
+            } catch (error) {
+                console.error('Error during export:', error);
+                showStatus(exportStatus, `Error during export: ${error.message}`, 'error');
+            }
+        }
+        
+        // Helper function to show status messages
+        function showStatus(elementId, message, type) {
+            const element = typeof elementId === 'string' ? document.getElementById(elementId) : elementId;
+            element.textContent = message;
+            element.className = `status status-${type}`;
+        }
+    </script>
+
+    <!-- Embedded sample data for demonstration -->
+    <div file-name="train (2).csv" file-content="PassengerId,Survived,Pclass,Name,Sex,Age,SibSp,Parch,Ticket,Fare,Cabin,Embarked
+1,0,3,'Braund, Mr. Owen Harris',male,22,1,0,A/5 21171,7.25,,S
+2,1,1,'Cumings, Mrs. John Bradley (Florence Briggs Thayer)',female,38,1,0,PC 17599,71.2833,C85,C
+3,1,3,'Heikkinen, Miss. Laina',female,26,0,0,STON/O2. 3101282,7.925,,S
+4,1,1,'Futrelle, Mrs. Jacques Heath (Lily May Peel)',female,35,1,0,113803,53.1,C123,S
+5,0,3,'Allen, Mr. William Henry',male,35,0,0,373450,8.05,,S
+6,0,3,'Moran, Mr. James',male,,0,0,330877,8.4583,,Q
+7,0,1,'McCarthy, Mr. Timothy J',male,54,0,0,17463,51.8625,E46,S
+8,0,3,'Palsson, Master. Gosta Leonard',male,2,3,1,349909,21.075,,S
+9,1,3,'Johnson, Mrs. Oscar W (Elisabeth Vilhelmina Berg)',female,27,0,2,347742,11.1333,,S
+10,1,2,'Nasser, Mrs. Nicholas (Adele Achem)',female,14,1,0,237736,30.0708,,C
+11,1,3,'Sandstrom, Miss. Marguerite Rut',female,4,1,1,PP 9549,16.7,G6,S
+12,1,1,'Bonnell, Miss. Elizabeth',female,58,0,0,113783,26.55,C103,S
+13,0,3,'Saundercock, Mr. William Henry',male,20,0,0,A/5. 2151,8.05,,S
+14,0,3,'Andersson, Mr. Anders Johan',male,39,1,5,347082,31.275,,S
+15,0,3,'Vestrom, Miss. Hulda Amanda Adolfina',female,14,0,0,350406,7.8542,,S
+16,1,2,'Hewlett, Mrs. (Mary D Kingcome)',female,55,0,0,248706,16,,S
+17,0,3,'Rice, Master. Eugene',male,2,4,1,382652,29.125,,Q
+18,1,2,'Williams, Mr. Charles Eugene',male,,0,0,244373,13,,S
+19,0,3,'Vander Planke, Mrs. Julius (Emelia Maria Vandemoortele)',female,31,1,0,345763,18,,S
+20,1,3,'Masselmani, Mrs. Fatima',female,,0,0,2649,7.225,,C" style="display: none;"></div>
+
+    <div file-name="test (3).csv" file-content="PassengerId,Pclass,Name,Sex,Age,SibSp,Parch,Ticket,Fare,Cabin,Embarked
+892,3,'Kelly, Mr. James',male,34.5,0,0,330911,7.8292,,Q
+893,3,'Wilkes, Mrs. James (Ellen Needs)',female,47,1,0,363272,7,,S
+894,2,'Myles, Mr. Thomas Francis',male,62,0,0,240276,9.6875,,Q
+895,3,'Wirz, Mr. Albert',male,27,0,0,315154,8.6625,,S
+896,3,'Hirvonen, Mrs. Alexander (Helga E Lindqvist)',female,22,1,1,3101298,12.2875,,S
+897,3,'Svensson, Mr. Johan Cervin',male,14,0,0,7538,9.225,,S
+898,3,'Connolly, Miss. Kate',female,30,0,0,330972,7.6292,,Q
+899,2,'Caldwell, Mr. Albert Francis',male,26,1,1,248738,29,,S
+900,3,'Abrahim, Mrs. Joseph (Sophie Halaut Easu)',female,18,0,0,2657,7.2292,,C
+901,3,'Davies, Mr. John Samuel',male,21,2,0,A/4 48871,24.15,,S
+902,3,'Ilieff, Mr. Ylio',male,,0,0,349220,7.8958,,S
+903,1,'Jones, Mr. Charles Cresson',male,46,0,0,694,26,,S
+904,1,'Snyder, Mrs. John Pillsbury (Nelle Stevenson)',female,23,1,0,21228,82.2667,B45,S
+905,2,'Howard, Mr. Benjamin',male,63,1,0,24065,26,,S
+906,1,'Chaffee, Mr. Herbert Fuller',male,46,1,0,W.E.P. 5734,61.175,E31,S
+907,2,'del Carlo, Mrs. Sebastiano (Argenia Genovesi)',female,24,1,0,SC/PARIS 2167,27.7208,,C
+908,2,'Kink, Mr. Vincenz',male,26,2,0,315151,8.6625,,S
+909,3,'Staneff, Mr. Ivan',male,,0,0,349208,7.8958,,S
+910,3,'Moutal, Mr. Rahamin Haim',male,,0,0,374746,8.05,,S
+911,2,'Baclini, Miss. Eugenie',female,0.75,2,1,2666,19.2583,,C" style="display: none;"></div>
+</body>
+</html>
