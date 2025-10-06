@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Titanic Binary Classifier - TensorFlow.js</title>
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@latest"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs-vis@latest"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .section {
+            background: white;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        button {
+            background-color: #4CAF50;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover {
+            background-color: #45a049;
+        }
+        button:disabled {
+            background-color: #cccccc;
+            cursor: not-allowed;
+        }
+        input[type="file"] {
+            margin: 10px 0;
+        }
+        .status {
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 4px;
+        }
+        .status.info {
+            background-color: #e7f3ff;
+            border-left: 4px solid #2196F3;
+        }
+        .status.success {
+            background-color: #e8f5e8;
+            border-left: 4px solid #4CAF50;
+        }
+        .status.error {
+            background-color: #ffebee;
+            border-left: 4px solid #f44336;
+        }
+        .metrics-container {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 20px;
+        }
+        .metric-card {
+            flex: 1;
+            min-width: 200px;
+            padding: 15px;
+            background: #f8f9fa;
+            border-radius: 6px;
+            text-align: center;
+        }
+        .slider-container {
+            margin: 20px 0;
+        }
+        input[type="range"] {
+            width: 100%;
+        }
+        @media (max-width: 768px) {
+            .metrics-container {
+                flex-direction: column;
+            }
+        }
+    </style>
+</head>
+<body>
+    <h1>🚢 Titanic Binary Classifier - TensorFlow.js</h1>
+    
+    <!-- Data Load Section -->
+    <div class="section" id="data-load">
+        <h2>📊 Data Load</h2>
+        <div>
+            <label for="train-file">Training Data (train.csv):</label>
+            <input type="file" id="train-file" accept=".csv">
+        </div>
+        <div>
+            <label for="test-file">Test Data (test.csv):</label>
+            <input type="file" id="test-file" accept=".csv">
+        </div>
+        <button onclick="loadData()">Load Data</button>
+        <div id="data-status" class="status"></div>
+        <div id="data-preview"></div>
+    </div>
+
+    <!-- Preprocessing Section -->
+    <div class="section" id="preprocessing">
+        <h2>🔧 Preprocessing</h2>
+        <button onclick="preprocessData()" id="preprocess-btn" disabled>Preprocess Data</button>
+        <div id="preprocess-status" class="status"></div>
+        <div>
+            <label>
+                <input type="checkbox" id="family-features" checked>
+                Add Family Features (FamilySize, IsAlone)
+            </label>
+        </div>
+    </div>
+
+    <!-- Model Section -->
+    <div class="section" id="model">
+        <h2>🧠 Model</h2>
+        <button onclick="createModel()" id="create-model-btn" disabled>Create Model</button>
+        <div id="model-status" class="status"></div>
+        <div id="model-summary"></div>
+    </div>
+
+    <!-- Training Section -->
+    <div class="section" id="training">
+        <h2>🏋️ Training</h2>
+        <button onclick="trainModel()" id="train-btn" disabled>Train Model</button>
+        <div id="training-status" class="status"></div>
+        <div id="training-plots"></div>
+    </div>
+
+    <!-- Metrics Section -->
+    <div class="section" id="metrics">
+        <h2>📈 Metrics</h2>
+        <button onclick="evaluateModel()" id="evaluate-btn" disabled>Evaluate Model</button>
+        <div class="slider-container">
+            <label for="threshold-slider">Classification Threshold: <span id="threshold-value">0.5</span></label>
+            <input type="range" id="threshold-slider" min="0" max="1" step="0.01" value="0.5" oninput="updateThreshold(this.value)">
+        </div>
+        <div id="metrics-status" class="status"></div>
+        <div class="metrics-container" id="metrics-display"></div>
+        <div id="roc-plot"></div>
+    </div>
+
+    <!-- Prediction & Export Section -->
+    <div class="section" id="prediction">
+        <h2>🔮 Prediction & Export</h2>
+        <button onclick="predictTestData()" id="predict-btn" disabled>Predict Test Data</button>
+        <button onclick="exportModel()" id="export-model-btn" disabled>Export Model</button>
+        <div id="prediction-status" class="status"></div>
+    </div>
+
+    <!-- Deployment Notes -->
+    <div class="section" id="deployment">
+        <h2>🚀 Deployment Notes</h2>
+        <p>To deploy this app on GitHub Pages:</p>
+        <ol>
+            <li>Create a public GitHub repository</li>
+            <li>Commit index.html and app.js files</li>
+            <li>Enable GitHub Pages in repository settings (Source: main branch, root folder)</li>
+            <li>Test your deployed app at: https://[your-username].github.io/[repository-name]</li>
+        </ol>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>
