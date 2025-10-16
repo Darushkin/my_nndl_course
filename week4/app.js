@@ -10,6 +10,7 @@ class StockPredictionApp {
         this.isTraining = false;
         
         this.initializeEventListeners();
+        console.log('App initialized');
     }
 
     initializeEventListeners() {
@@ -60,19 +61,22 @@ class StockPredictionApp {
                 throw new Error('No training data available. Please check your CSV file.');
             }
 
-            // Fix input shape calculation
+            console.log('Training data shape:', X_train.shape);
+            console.log('Training labels shape:', y_train.shape);
+
+            // Create model with correct input shape
             const sequenceLength = X_train.shape[1];
             const featuresPerTimestep = X_train.shape[2];
             this.model = new GRUModel([sequenceLength, featuresPerTimestep], y_train.shape[1]);
             
             document.getElementById('status').textContent = 'Training model...';
-            await this.model.train(X_train, y_train, X_test, y_test, 50, 32);
+            await this.model.train(X_train, y_train, X_test, y_test, 20, 32); // Reduced epochs for testing
             
             predictBtn.disabled = false;
             document.getElementById('status').textContent = 'Training completed. Click Run Prediction to evaluate.';
             
         } catch (error) {
-            document.getElementById('status').textContent = `Training error: ${error.message}`;
+            document.getElementById('status').textContent = `Training failed: ${error.message}`;
             console.error('Training error:', error);
         } finally {
             this.isTraining = false;
@@ -97,6 +101,9 @@ class StockPredictionApp {
             this.visualizeResults(evaluation, symbols);
             
             document.getElementById('status').textContent = 'Prediction completed. Results displayed below.';
+            
+            // Clean up
+            predictions.dispose();
             
         } catch (error) {
             document.getElementById('status').textContent = `Prediction error: ${error.message}`;
@@ -140,11 +147,6 @@ class StockPredictionApp {
                         acc > 60 ? 'rgba(75, 192, 192, 0.8)' : 
                         acc > 50 ? 'rgba(255, 205, 86, 0.8)' : 
                         'rgba(255, 99, 132, 0.8)'
-                    ),
-                    borderColor: sortedAccuracies.map(acc => 
-                        acc > 60 ? 'rgb(75, 192, 192)' : 
-                        acc > 50 ? 'rgb(255, 205, 86)' : 
-                        'rgb(255, 99, 132)'
                     ),
                     borderWidth: 1
                 }]
@@ -195,12 +197,12 @@ class StockPredictionApp {
             container.appendChild(chartContainer);
 
             const canvas = document.getElementById(`timeline-${symbol}`);
-            if (!canvas) continue;
+            if (!canvas) return;
             
             const ctx = canvas.getContext('2d');
             
-            // Sample first 50 predictions for cleaner visualization
-            const sampleSize = Math.min(50, stockPredictions.length);
+            // Sample first 30 predictions for cleaner visualization
+            const sampleSize = Math.min(30, stockPredictions.length);
             const sampleData = stockPredictions.slice(0, sampleSize);
             
             const correctData = sampleData.map(p => p.correct ? 1 : 0);
@@ -231,26 +233,10 @@ class StockPredictionApp {
                                 callback: (value) => value === 1 ? 'Correct' : value === 0 ? 'Wrong' : ''
                             }
                         }
-                    },
-                    plugins: {
-                        tooltip: {
-                            callbacks: {
-                                label: (context) => {
-                                    const pred = sampleData[context.dataIndex];
-                                    return `Prediction: ${pred.pred === 1 ? 'Up' : 'Down'}, Actual: ${pred.true === 1 ? 'Up' : 'Down'}`;
-                                }
-                            }
-                        }
                     }
                 }
             });
         });
-    }
-
-    dispose() {
-        if (this.dataLoader) this.dataLoader.dispose();
-        if (this.model) this.model.dispose();
-        if (this.accuracyChart) this.accuracyChart.destroy();
     }
 }
 
