@@ -8,6 +8,7 @@ export class StockPredictorApp {
     this.model = null;
     this.isTraining = false;
     this.results = null;
+    this.dataLoaded = false;
     
     this.initializeUI();
   }
@@ -15,11 +16,12 @@ export class StockPredictorApp {
   initializeUI() {
     const fileInput = document.getElementById('csvFile');
     const trainBtn = document.getElementById('trainBtn');
-    const progress = document.getElementById('progress');
-    const resultsDiv = document.getElementById('results');
     
     fileInput.addEventListener('change', (e) => this.handleFileUpload(e));
     trainBtn.addEventListener('click', () => this.startTraining());
+    
+    // Initially disable train button
+    trainBtn.disabled = true;
   }
 
   async handleFileUpload(event) {
@@ -28,42 +30,60 @@ export class StockPredictorApp {
     
     try {
       document.getElementById('status').textContent = 'Loading CSV...';
+      document.getElementById('trainBtn').disabled = true;
+      
       await this.dataLoader.loadCSV(file);
-      document.getElementById('status').textContent = 'CSV loaded successfully!';
+      this.dataLoaded = true;
+      
+      document.getElementById('status').textContent = 'CSV loaded successfully! Ready to train.';
+      document.getElementById('trainBtn').disabled = false;
+      
     } catch (error) {
       document.getElementById('status').textContent = `Error: ${error.message}`;
+      document.getElementById('trainBtn').disabled = true;
+      this.dataLoaded = false;
     }
   }
 
   async startTraining() {
-    if (this.isTraining) return;
+    if (this.isTraining || !this.dataLoaded) return;
     
     try {
       this.isTraining = true;
-      document.getElementById('status').textContent = 'Preparing data...';
+      const trainBtn = document.getElementById('trainBtn');
+      const status = document.getElementById('status');
+      
+      trainBtn.disabled = true;
+      trainBtn.textContent = 'Training...';
+      status.textContent = 'Preparing data...';
       
       const { X_train, y_train, X_test, y_test, symbols } = this.dataLoader.prepareFeatures();
       
-      document.getElementById('status').textContent = 'Building model...';
+      status.textContent = 'Building model...';
       this.model = new GRUModel([12, symbols.length * 2], symbols.length * 3);
       this.model.buildModel();
       
-      document.getElementById('status').textContent = 'Training model...';
+      status.textContent = 'Training model...';
       await this.model.train(X_train, y_train, X_test, y_test, 30, 32);
       
-      document.getElementById('status').textContent = 'Evaluating model...';
+      status.textContent = 'Evaluating model...';
       const predictions = await this.model.predict(X_test);
       const stockAccuracies = this.model.calculateStockAccuracies(predictions, y_test, symbols);
       
       this.results = { stockAccuracies, symbols, predictions, y_test };
       this.displayResults();
       
+      status.textContent = 'Training completed!';
       predictions.dispose();
       
     } catch (error) {
       document.getElementById('status').textContent = `Training failed: ${error.message}`;
+      console.error('Training error:', error);
     } finally {
       this.isTraining = false;
+      const trainBtn = document.getElementById('trainBtn');
+      trainBtn.disabled = false;
+      trainBtn.textContent = 'Start Training';
     }
   }
 
@@ -146,7 +166,7 @@ export class StockPredictorApp {
     topStocks.forEach(({ symbol }, stockIdx) => {
       const stockDiv = document.createElement('div');
       stockDiv.className = 'stock-timeline';
-      stockDiv.innerHTML = `<h4>${symbol} Predictions</h4><div class="timeline" id="timeline-${symbol}"></div>`;
+      stockDiv.innerHTML = `<h4>${symbol} (Accuracy: ${(this.results.stockAccuracies[symbol] * 100).toFixed(1)}%)</h4><div class="timeline" id="timeline-${symbol}"></div>`;
       container.appendChild(stockDiv);
       
       this.createSingleTimeline(symbol, stockIdx, predData, trueData);
