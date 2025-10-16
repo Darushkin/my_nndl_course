@@ -32,34 +32,44 @@ class DataLoader {
         const lines = csvText.trim().split('\n');
         const headers = lines[0].split(',').map(h => h.trim());
         
-        console.log('CSV Headers:', headers); // Debug log
+        console.log('CSV Headers:', headers);
         
         const data = {};
         const symbols = new Set();
         const dates = new Set();
 
-        // Parse all rows
         for (let i = 1; i < lines.length; i++) {
             const line = lines[i].trim();
             if (!line) continue;
 
-            // Handle CSV with potential quotes and commas within values
-            const values = this.parseCSVLine(line);
-            if (values.length !== headers.length) {
-                console.warn(`Skipping line ${i}: expected ${headers.length} columns, got ${values.length}`);
+            const values = line.split(',');
+            if (values.length < headers.length) {
+                console.warn(`Skipping line ${i}: insufficient columns`);
                 continue;
             }
 
             const row = {};
             headers.forEach((header, index) => {
-                row[header] = values[index].trim();
+                row[header] = values[index] ? values[index].trim() : '';
             });
 
             const symbol = row.Symbol || row.symbol;
             const date = row.Date || row.date;
             
             if (!symbol || !date) {
-                console.warn(`Skipping row ${i}: missing symbol or date`, row);
+                console.warn(`Skipping row ${i}: missing symbol or date`);
+                continue;
+            }
+
+            // Parse numeric values safely
+            const open = parseFloat(row.Open || row.open);
+            const close = parseFloat(row.Close || row.close);
+            const high = parseFloat(row.High || row.high);
+            const low = parseFloat(row.Low || row.low);
+            const volume = parseFloat(row.Volume || row.volume);
+
+            if (isNaN(open) || isNaN(close)) {
+                console.warn(`Skipping row ${i}: invalid numeric data`);
                 continue;
             }
 
@@ -68,14 +78,12 @@ class DataLoader {
 
             if (!data[symbol]) data[symbol] = {};
             
-            // Parse numeric values - handle your specific column names
             data[symbol][date] = {
-                Open: parseFloat(row.Open || row.open || 0),
-                Close: parseFloat(row.Close || row.close || 0),
-                High: parseFloat(row.High || row.high || 0),
-                Low: parseFloat(row.Low || row.low || 0),
-                Volume: parseFloat(row.Volume || row.volume || 0),
-                AdjClose: parseFloat(row['Adj Close'] || row['Adj Close'] || row.Close || row.close || 0)
+                Open: open,
+                Close: close,
+                High: high || open,
+                Low: low || open,
+                Volume: volume || 0
             };
         }
 
@@ -84,29 +92,9 @@ class DataLoader {
         this.stocksData = data;
 
         console.log(`Loaded ${this.symbols.length} stocks with ${this.dates.length} trading days`);
-        console.log('Sample data:', this.stocksData[this.symbols[0]][this.dates[0]]);
-    }
-
-    parseCSVLine(line) {
-        const result = [];
-        let current = '';
-        let inQuotes = false;
-        
-        for (let i = 0; i < line.length; i++) {
-            const char = line[i];
-            
-            if (char === '"') {
-                inQuotes = !inQuotes;
-            } else if (char === ',' && !inQuotes) {
-                result.push(current);
-                current = '';
-            } else {
-                current += char;
-            }
+        if (this.symbols.length > 0) {
+            console.log('Sample data:', this.stocksData[this.symbols[0]][this.dates[0]]);
         }
-        
-        result.push(current);
-        return result;
     }
 
     normalizeData() {
@@ -115,7 +103,7 @@ class DataLoader {
         this.normalizedData = {};
         const minMax = {};
 
-        // Calculate min-max per stock for Open and Close
+        // Calculate min-max per stock
         this.symbols.forEach(symbol => {
             minMax[symbol] = {
                 Open: { min: Infinity, max: -Infinity },
@@ -153,7 +141,7 @@ class DataLoader {
         return this.normalizedData;
     }
 
-    createSequences(sequenceLength = 12, predictionHorizon = 3) {
+    createSequences(sequenceLength = 10, predictionHorizon = 2) {
         if (!this.stocksData) throw new Error('No data loaded');
         if (!this.normalizedData) this.normalizeData();
 
@@ -161,15 +149,17 @@ class DataLoader {
         const targets = [];
         const validDates = [];
 
-        // Create aligned data matrix
-        for (let i = sequenceLength; i < this.dates.length - predictionHorizon; i++) {
+        // Use fewer sequences for stability
+        const maxSequences = Math.min(1000, this.dates.length - sequenceLength - predictionHorizon);
+
+        for (let i = sequenceLength; i < Math.min(this.dates.length - predictionHorizon, sequenceLength + maxSequences); i++) {
             const currentDate = this.dates[i];
             const sequenceData = [];
             let validSequence = true;
 
-            // Get sequence for all symbols
-            for (let j = sequenceLength - 1; j >= 0; j--) {
-                const seqDate = this.dates[i - j];
+            // Build sequence
+            for (let j = 0; j < sequenceLength; j++) {
+                const seqDate = this.dates[i - sequenceLength + j];
                 const timeStepData = [];
 
                 this.symbols.forEach(symbol => {
@@ -179,7 +169,6 @@ class DataLoader {
                             this.normalizedData[symbol][seqDate].Close
                         );
                     } else {
-                        console.warn(`Missing data for ${symbol} on ${seqDate}`);
                         validSequence = false;
                     }
                 });
@@ -187,17 +176,17 @@ class DataLoader {
                 if (validSequence) sequenceData.push(timeStepData);
             }
 
-            // Create target labels
+            // Create target
             if (validSequence) {
                 const target = [];
                 const baseClosePrices = [];
 
-                // Get base close prices (current date)
+                // Get current prices
                 this.symbols.forEach(symbol => {
                     baseClosePrices.push(this.stocksData[symbol][currentDate].Close);
                 });
 
-                // Calculate binary labels for prediction horizon
+                // Create binary targets
                 for (let offset = 1; offset <= predictionHorizon; offset++) {
                     const futureDate = this.dates[i + offset];
                     this.symbols.forEach((symbol, idx) => {
@@ -205,7 +194,6 @@ class DataLoader {
                             const futureClose = this.stocksData[symbol][futureDate].Close;
                             target.push(futureClose > baseClosePrices[idx] ? 1 : 0);
                         } else {
-                            console.warn(`Missing future data for ${symbol} on ${futureDate}`);
                             validSequence = false;
                         }
                     });
@@ -220,10 +208,10 @@ class DataLoader {
         }
 
         if (sequences.length === 0) {
-            throw new Error('No valid sequences created. Check your data format and ensure all stocks have data for all dates.');
+            throw new Error('No valid sequences created. Check data consistency.');
         }
 
-        // Split into train/test (80/20 chronological split)
+        // Split data
         const splitIndex = Math.floor(sequences.length * 0.8);
         
         this.X_train = tf.tensor3d(sequences.slice(0, splitIndex));
@@ -233,8 +221,7 @@ class DataLoader {
         this.testDates = validDates.slice(splitIndex);
 
         console.log(`Created ${sequences.length} sequences`);
-        console.log(`Training: ${this.X_train.shape} sequences, Test: ${this.X_test.shape} sequences`);
-        console.log(`Features per timestep: ${this.X_train.shape[2]}`);
+        console.log(`Training shape: ${this.X_train.shape}, Test shape: ${this.X_test.shape}`);
         
         return {
             X_train: this.X_train,
