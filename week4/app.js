@@ -31,14 +31,15 @@ class StockPredictionApp {
             await this.dataLoader.loadCSV(file);
             
             document.getElementById('status').textContent = 'Preprocessing data...';
-            this.dataLoader.createSequences();
+            const result = this.dataLoader.createSequences();
             
             document.getElementById('trainBtn').disabled = false;
-            document.getElementById('status').textContent = 'Data loaded. Click Train Model to begin training.';
+            document.getElementById('status').textContent = 
+                `Data loaded: ${result.symbols.length} stocks, ${result.X_train.shape[0]} training sequences. Click Train Model to begin training.`;
             
         } catch (error) {
             document.getElementById('status').textContent = `Error: ${error.message}`;
-            console.error(error);
+            console.error('File upload error:', error);
         }
     }
 
@@ -46,12 +47,19 @@ class StockPredictionApp {
         if (this.isTraining) return;
         
         this.isTraining = true;
-        document.getElementById('trainBtn').disabled = true;
-        document.getElementById('predictBtn').disabled = true;
+        const trainBtn = document.getElementById('trainBtn');
+        const predictBtn = document.getElementById('predictBtn');
+        
+        trainBtn.disabled = true;
+        predictBtn.disabled = true;
 
         try {
             const { X_train, y_train, X_test, y_test, symbols } = this.dataLoader;
             
+            if (!X_train || X_train.shape[0] === 0) {
+                throw new Error('No training data available. Please check your CSV file.');
+            }
+
             // Fix input shape calculation
             const sequenceLength = X_train.shape[1];
             const featuresPerTimestep = X_train.shape[2];
@@ -60,15 +68,15 @@ class StockPredictionApp {
             document.getElementById('status').textContent = 'Training model...';
             await this.model.train(X_train, y_train, X_test, y_test, 50, 32);
             
-            document.getElementById('predictBtn').disabled = false;
+            predictBtn.disabled = false;
             document.getElementById('status').textContent = 'Training completed. Click Run Prediction to evaluate.';
             
         } catch (error) {
             document.getElementById('status').textContent = `Training error: ${error.message}`;
-            console.error(error);
+            console.error('Training error:', error);
         } finally {
             this.isTraining = false;
-            document.getElementById('trainBtn').disabled = false;
+            trainBtn.disabled = false;
         }
     }
 
@@ -92,7 +100,7 @@ class StockPredictionApp {
             
         } catch (error) {
             document.getElementById('status').textContent = `Prediction error: ${error.message}`;
-            console.error(error);
+            console.error('Prediction error:', error);
         }
     }
 
