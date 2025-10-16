@@ -28,45 +28,52 @@ class GRUModel {
         });
 
         this.model.compile({
-            optimizer: tf.train.adam(0.001),
+            optimizer: 'adam',
             loss: 'binaryCrossentropy',
-            metrics: ['binaryAccuracy']
+            metrics: ['accuracy']
         });
 
+        console.log('Model built successfully');
         return this.model;
     }
 
     async train(X_train, y_train, X_test, y_test, epochs = 50, batchSize = 32) {
-        if (!this.model) this.buildModel();
+        if (!this.model) {
+            this.buildModel();
+        }
 
-        // Add progress tracking
+        // Reset progress
         const progressElement = document.getElementById('trainingProgress');
         if (progressElement) {
             progressElement.value = 0;
         }
 
-        this.history = await this.model.fit(X_train, y_train, {
-            epochs: epochs,
-            batchSize: batchSize,
-            validationData: [X_test, y_test],
-            callbacks: {
-                onEpochEnd: async (epoch, logs) => {
-                    const progress = ((epoch + 1) / epochs) * 100;
-                    const status = `Epoch ${epoch + 1}/${epochs} - loss: ${logs.loss.toFixed(4)}, acc: ${logs.binaryAccuracy.toFixed(4)}, val_loss: ${logs.val_loss.toFixed(4)}, val_acc: ${logs.val_binaryAccuracy.toFixed(4)}`;
-                    
-                    // Update UI
-                    const progressElement = document.getElementById('trainingProgress');
-                    const statusElement = document.getElementById('status');
-                    if (progressElement) progressElement.value = progress;
-                    if (statusElement) statusElement.textContent = status;
-                    
-                    console.log(status);
-                    await tf.nextFrame(); // Prevent UI blocking
+        try {
+            this.history = await this.model.fit(X_train, y_train, {
+                epochs: epochs,
+                batchSize: batchSize,
+                validationData: [X_test, y_test],
+                callbacks: {
+                    onEpochEnd: (epoch, logs) => {
+                        const progress = ((epoch + 1) / epochs) * 100;
+                        const status = `Epoch ${epoch + 1}/${epochs} - loss: ${logs.loss.toFixed(4)}, acc: ${logs.acc.toFixed(4)}, val_loss: ${logs.val_loss.toFixed(4)}, val_acc: ${logs.val_acc.toFixed(4)}`;
+                        
+                        // Update UI
+                        const progressElement = document.getElementById('trainingProgress');
+                        const statusElement = document.getElementById('status');
+                        if (progressElement) progressElement.value = progress;
+                        if (statusElement) statusElement.textContent = status;
+                        
+                        console.log(status);
+                    }
                 }
-            }
-        });
+            });
 
-        return this.history;
+            return this.history;
+        } catch (error) {
+            console.error('Training error:', error);
+            throw error;
+        }
     }
 
     async predict(X) {
@@ -75,9 +82,9 @@ class GRUModel {
     }
 
     evaluatePerStock(yTrue, yPred, symbols, horizon = 3) {
-        const yTrueArray = yTrue.arraySync();
-        const yPredArray = yPred.arraySync();
-        const numStocks = symbols.length;
+        // Convert tensors to arrays
+        const yTrueArray = Array.isArray(yTrue) ? yTrue : yTrue.arraySync();
+        const yPredArray = Array.isArray(yPred) ? yPred : yPred.arraySync();
         
         const stockAccuracies = {};
         const stockPredictions = {};
@@ -90,6 +97,8 @@ class GRUModel {
             for (let i = 0; i < yTrueArray.length; i++) {
                 for (let offset = 0; offset < horizon; offset++) {
                     const targetIdx = stockIdx * horizon + offset;
+                    if (targetIdx >= yTrueArray[i].length) continue;
+                    
                     const trueVal = yTrueArray[i][targetIdx];
                     const predVal = yPredArray[i][targetIdx] > 0.5 ? 1 : 0;
                     
@@ -104,7 +113,7 @@ class GRUModel {
                 }
             }
 
-            stockAccuracies[symbol] = correct / total;
+            stockAccuracies[symbol] = total > 0 ? correct / total : 0;
             stockPredictions[symbol] = predictions;
         });
 
