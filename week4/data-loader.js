@@ -30,7 +30,9 @@ class DataLoader {
 
     parseCSV(csvText) {
         const lines = csvText.trim().split('\n');
-        const headers = lines[0].split(',');
+        const headers = lines[0].split(',').map(h => h.trim());
+        
+        console.log('CSV Headers:', headers); // Debug log
         
         const data = {};
         const symbols = new Set();
@@ -38,27 +40,42 @@ class DataLoader {
 
         // Parse all rows
         for (let i = 1; i < lines.length; i++) {
-            const values = lines[i].split(',');
-            if (values.length !== headers.length) continue;
+            const line = lines[i].trim();
+            if (!line) continue;
+
+            // Handle CSV with potential quotes and commas within values
+            const values = this.parseCSVLine(line);
+            if (values.length !== headers.length) {
+                console.warn(`Skipping line ${i}: expected ${headers.length} columns, got ${values.length}`);
+                continue;
+            }
 
             const row = {};
             headers.forEach((header, index) => {
-                row[header.trim()] = values[index].trim();
+                row[header] = values[index].trim();
             });
 
-            const symbol = row.Symbol;
-            const date = row.Date;
+            const symbol = row.Symbol || row.symbol;
+            const date = row.Date || row.date;
             
+            if (!symbol || !date) {
+                console.warn(`Skipping row ${i}: missing symbol or date`, row);
+                continue;
+            }
+
             symbols.add(symbol);
             dates.add(date);
 
             if (!data[symbol]) data[symbol] = {};
+            
+            // Parse numeric values - handle your specific column names
             data[symbol][date] = {
-                Open: parseFloat(row.Open),
-                Close: parseFloat(row.Close),
-                High: parseFloat(row.High),
-                Low: parseFloat(row.Low),
-                Volume: parseFloat(row.Volume)
+                Open: parseFloat(row.Open || row.open || 0),
+                Close: parseFloat(row.Close || row.close || 0),
+                High: parseFloat(row.High || row.high || 0),
+                Low: parseFloat(row.Low || row.low || 0),
+                Volume: parseFloat(row.Volume || row.volume || 0),
+                AdjClose: parseFloat(row['Adj Close'] || row['Adj Close'] || row.Close || row.close || 0)
             };
         }
 
@@ -67,6 +84,29 @@ class DataLoader {
         this.stocksData = data;
 
         console.log(`Loaded ${this.symbols.length} stocks with ${this.dates.length} trading days`);
+        console.log('Sample data:', this.stocksData[this.symbols[0]][this.dates[0]]);
+    }
+
+    parseCSVLine(line) {
+        const result = [];
+        let current = '';
+        let inQuotes = false;
+        
+        for (let i = 0; i < line.length; i++) {
+            const char = line[i];
+            
+            if (char === '"') {
+                inQuotes = !inQuotes;
+            } else if (char === ',' && !inQuotes) {
+                result.push(current);
+                current = '';
+            } else {
+                current += char;
+            }
+        }
+        
+        result.push(current);
+        return result;
     }
 
     normalizeData() {
@@ -99,11 +139,12 @@ class DataLoader {
             this.dates.forEach(date => {
                 if (this.stocksData[symbol][date]) {
                     const point = this.stocksData[symbol][date];
+                    const openRange = minMax[symbol].Open.max - minMax[symbol].Open.min;
+                    const closeRange = minMax[symbol].Close.max - minMax[symbol].Close.min;
+                    
                     this.normalizedData[symbol][date] = {
-                        Open: (point.Open - minMax[symbol].Open.min) / 
-                              (minMax[symbol].Open.max - minMax[symbol].Open.min),
-                        Close: (point.Close - minMax[symbol].Close.min) / 
-                               (minMax[symbol].Close.max - minMax[symbol].Close.min)
+                        Open: openRange > 0 ? (point.Open - minMax[symbol].Open.min) / openRange : 0.5,
+                        Close: closeRange > 0 ? (point.Close - minMax[symbol].Close.min) / closeRange : 0.5
                     };
                 }
             });
@@ -138,6 +179,7 @@ class DataLoader {
                             this.normalizedData[symbol][seqDate].Close
                         );
                     } else {
+                        console.warn(`Missing data for ${symbol} on ${seqDate}`);
                         validSequence = false;
                     }
                 });
@@ -163,6 +205,7 @@ class DataLoader {
                             const futureClose = this.stocksData[symbol][futureDate].Close;
                             target.push(futureClose > baseClosePrices[idx] ? 1 : 0);
                         } else {
+                            console.warn(`Missing future data for ${symbol} on ${futureDate}`);
                             validSequence = false;
                         }
                     });
@@ -177,7 +220,7 @@ class DataLoader {
         }
 
         if (sequences.length === 0) {
-            throw new Error('No valid sequences created. Check your data format.');
+            throw new Error('No valid sequences created. Check your data format and ensure all stocks have data for all dates.');
         }
 
         // Split into train/test (80/20 chronological split)
@@ -190,7 +233,8 @@ class DataLoader {
         this.testDates = validDates.slice(splitIndex);
 
         console.log(`Created ${sequences.length} sequences`);
-        console.log(`Training: ${this.X_train.shape[0]}, Test: ${this.X_test.shape[0]}`);
+        console.log(`Training: ${this.X_train.shape} sequences, Test: ${this.X_test.shape} sequences`);
+        console.log(`Features per timestep: ${this.X_train.shape[2]}`);
         
         return {
             X_train: this.X_train,
